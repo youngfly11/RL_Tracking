@@ -1,7 +1,7 @@
 # PyTorch-RLTracking
 
 ### check
-- [ ] resnet, the final output of network   
+- [x] resnet, the final output of network   
 - [ ] RL pip-line, lstm and hidden state
 - [ ] backward and optimizer
 - [ ] training loop

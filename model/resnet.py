@@ -2,7 +2,7 @@ import torch.nn as nn
 import math
 import torch.utils.model_zoo as model_zoo
 from torch.autograd import Variable
-import torch.nn as nn
+import torch
 
 
 __all__ = ['ResNet', 'resnet18', 'resnet34', 'resnet50', 'resnet101',
@@ -221,6 +221,8 @@ def resnet152(pretrained=False, **kwargs):
 
 if __name__=='__main__':
 
-    import torch
-    x = Variable()
-    resnet18(pretrained=False)
+
+    x = Variable(torch.ones(32,3,224,224))
+    model=resnet18(pretrained=False)
+    y = model(x)
+    print y.size()
