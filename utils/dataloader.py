@@ -65,7 +65,7 @@ class Numpy2Tensor(object):
     def __call__(self, sample):
 
         image, action, reward = sample['images'], sample['actions'], sample['rewards']
-        image = image.transpose(2,0,1)
+        image = image.transpose(2, 0, 1)
         action = np.array([action])
         reward = np.array([reward])
 
@@ -76,16 +76,17 @@ class Numpy2Tensor(object):
         return {'imgs':image, 'actions': action, 'rewards': reward}
 
 
-def get_load(imgs, actions, rewards, batch_size=10):
+def get_load(imgs, actions, rewards, batch_size=32):
 
-    train_dataset = ReadImage(imgs_list=imgs, actions=actions, rewards=rewards,
+    train_dataset = ReadImage(imgs_list=imgs,
+                              actions=actions,
+                              rewards=rewards,
                               transform=transforms.Compose([Numpy2Tensor()]))
 
     trainloader = DataLoader(train_dataset,
                              batch_size=batch_size,
                              num_workers=10,
                              shuffle=True)
-
     return trainloader
 
 
@@ -98,15 +99,15 @@ def ReadSingleImage(img):
     - img: return, torch.FloatTensor
     """
 
-    new_size = (224,224,3)
+    new_size = (224, 224, 3)
     mean_bgr = np.array([0.485, 0.456, 0.406], dtype=np.float32)
     stand_bgr = np.array([0.229, 0.224, 0.225], dtype=np.float32)
     img = img.resize(new_size)
     img = img[:, :, ::-1]
     img = img/255.0 - mean_bgr
     img /= stand_bgr
-    img = img.transpose(2,0,1)
-    img = img[None,:,:,:]
+    img = img.transpose(2, 0, 1)
+    img = img[None, :, :, :] # 1*c*h*w
     img = torch.from_numpy(img).float()
     return img
 
