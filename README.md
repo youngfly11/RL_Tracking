@@ -2,8 +2,10 @@
 
 ### check
 - [x] resnet, the final output of network   
-- [ ] RL pip-line, lstm and hidden state
+- [x] RL pip-line, lstm and hidden state
 - [ ] backward and optimizer
 - [ ] training loop
-- [ ] check Policy gradient   
+- [ ] check Policy gradient
+- [x] check the tracking 
+- [x] check dataloader   
    
