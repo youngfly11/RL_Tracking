@@ -38,6 +38,7 @@ def main():
     val_loss2 = {}
     train_reward = {}
     val_reward = {}
+
     for epoch in range(EPOCHS):
         reward_train, loss_train, loss1_train, loss2_train = train_epoch(trainer=trainer, video_train=video_train)
         reward_val, loss_val, loss1_val, loss2_val = val_epoch(trainer=trainer, video_val=video_val)
@@ -69,7 +70,7 @@ def main():
                 'train_loss': train_loss,
                 'val_loss': val_loss,
                 'train_rewards': train_reward,
-                'val__rewards': val_reward,
+                'val_rewards': val_reward,
             }, is_best,
                 filename='epoch_{}.pth.tar'.format(epoch + 1),
                 dir=os.path.join('checkpoints', 'Tracking'), epoch=epoch)
@@ -77,20 +78,17 @@ def main():
 
 def train_epoch(trainer=None, video_train=None):
 
-
     # TODO
-    # env.reset(), return fisrt observation
+    # env.reset(), return fisrt observation and second frames
     reward_avg = AverageMeter()
     loss_avg = AverageMeter()
     loss1_avg = AverageMeter()
     loss2_avg = AverageMeter()
     for video_name in video_train:
 
-
         actions = []
         rewards = []
         observations = []
-        hidden_for_train = None
         observation1, observation2 = env.reset(video_name)  # array
         img1 = ReadSingleImage(img=observation1)
         img1 = Variable(img1).cuda()
@@ -103,38 +101,41 @@ def train_epoch(trainer=None, video_train=None):
             observations.append(observation)
             img = ReadSingleImage(img=observation)
             img = Variable(img).cuda()
-            action = trainer.get_exploration_action(img=img, hidden_prev=hidden_prev).detach()
+            action = trainer.get_exploration_action(img=img, hidden_prev=hidden_prev)
 
-            action = action.data.cpu.numpy()[0]  ## change cuda tensor to numpy
-            actions.append(action)
+            actions.append(action) # just list
             new_observation, reward, done = env.step(action)
 
             actions.append(action)
-            rewards.append(reward)  # list for numpy
+            rewards.append(reward)  # just list
 
             observation = new_observation
 
             if done:
+
                 flag = 0
 
+                actions = np.array(actions, dtype=np.float64)
+                rewards = np.array(rewards, dtype=np.float64)
+
+                # update the rewards
                 reward_avg.update(np.mean(np.array(rewards)))
 
                 rewards = trainer.reward_to_go(rewards=rewards)
                 train_loader = get_load(imgs=observations, actions=actions, rewards=rewards)
                 loss, loss1, loss2 = trainer.optimize(train_loader=train_loader, hidden_prev=hidden_for_train)
-                print(video_name, 'rewards:', np.mean(np.array(rewards)), 'loss:', loss)
+                print(video_name, 'rewards:', np.mean(rewards), 'loss:', loss)
 
-                loss_avg.update(loss.cpu().numpy())
-                loss1_avg.update(loss1.cpu().numpy())
-                loss2_avg.update(loss2.cpu().numpy())
-
+                # update the loss
+                loss_avg.update(loss)
+                loss1_avg.update(loss1)
+                loss2_avg.update(loss2)
 
     return reward_avg.avg, loss_avg.avg, loss1_avg.avg, loss2_avg.avg
 
 
 def val_epoch(trainer=None, video_val=None):
-    # TODO
-    # env.reset(), return fisrt observation
+
     reward_avg = AverageMeter()
     loss_avg = AverageMeter()
     loss1_avg = AverageMeter()
@@ -154,32 +155,42 @@ def val_epoch(trainer=None, video_val=None):
         observation = observation2
         flag = 1
         while flag:
+
             observations.append(observation)
             img = ReadSingleImage(img=observation)
             img = Variable(img).cuda()
-            action = trainer.get_exploration_action(img=img, hidden_prev=hidden_prev).detach()
+            action = trainer.get_exploration_action(img=img, hidden_prev=hidden_prev)
 
-            action = action.data.cpu.numpy()[0]  ## change cuda tensor to numpy
-            actions.append(action)
+            actions.append(action) # just list
             new_observation, reward, done = env.step(action)
 
             actions.append(action)
-            rewards.append(reward)  # list for numpy
+            rewards.append(reward)  # just list
 
             observation = new_observation
 
             if done:
                 flag = 0
 
-                reward_avg.update(np.mean(np.array(rewards)))
+                actions = np.array(actions, dtype=np.float64)
+                rewards = np.array(rewards, dtype=np.float64)
+
+                # update the rewards
+                reward_avg.update(np.mean(rewards))
 
                 rewards = trainer.reward_to_go(rewards=rewards)
                 train_loader = get_load(imgs=observations, actions=actions, rewards=rewards)
-                loss, loss1, loss2 = trainer.optimize(train_loader=train_loader, hidden_prev=hidden_for_train, is_train=False)
-                print(video_name, 'rewards:', np.mean(np.array(rewards)), 'loss:', loss)
+                loss, loss1, loss2 = trainer.optimize(train_loader=train_loader,
+                                                      hidden_prev=hidden_for_train,
+                                                      is_train=False)
+                print(video_name, 'rewards:', np.mean(rewards), 'loss:', loss)
 
-                loss_avg.update(loss.cpu().numpy())
-                loss1_avg.update(loss1.cpu().numpy())
-                loss2_avg.update(loss2.cpu().numpy())
+                # update the loss
+                loss_avg.update(loss)
+                loss1_avg.update(loss1)
+                loss2_avg.update(loss2)
 
     return reward_avg.avg, loss_avg.avg, loss1_avg.avg, loss2_avg.avg
+
+if __name__ == '__main__':
+    main()
