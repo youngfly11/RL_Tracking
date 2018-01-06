@@ -8,9 +8,9 @@ import numpy as np
 
 class ReadImage(Dataset):
 
-    # set the random seed. saved in list
-    # actions np array. saved in list
-    # rewards np.array. saved in list
+    # set the random seed.
+    # actions np array.
+    # rewards np.array.
 
     random.seed(10)
     np.random.seed(10)
@@ -48,7 +48,7 @@ class ReadImage(Dataset):
         img = np.array(img, dtype=np.float64)
 
         img_np = img[:, :, ::-1]
-        img_np = img/255.0 - self.mean_bgr
+        img_np = img_np/255.0 - self.mean_bgr
         img_np /= self.stand_bgr
 
         sample = {'images':imgs, 'actions': action, 'rewards': reward}
