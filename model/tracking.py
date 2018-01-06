@@ -25,18 +25,15 @@ class TrackModel(nn.Module):
 
     def forward(self, imgs, action=None, hidden_prev=None, is_play=True):
 
-        batch_size = imgs.size[0]
-        # state = self.feature_extractor(img)
-        # state = state[None,:,:]  # change the hidden state [batch, state_dim] -> [1, batch, state_dim]
-        # hidden_pres = self.rnn(state, hidden_prev)
-        # h0 = hidden_pres[0]
+        # hidden_prev: tuple, (h0,c0)
 
+        batch_size = imgs.size[0]
         if self.is_play:
             state = self.feature_extractor(imgs)
             state = state[None, :, :]  # change the hidden state [batch, state_dim] -> [1, batch, state_dim]
             hidden_pres = self.rnn(state, hidden_prev)
             h0 = hidden_pres[0].squeeze(0)
-            action_prob, _ = self.actor(0)
+            action_prob, _ = self.actor(h0)
             return action_prob, hidden_pres
         else:
             hiddens = []
@@ -51,6 +48,7 @@ class TrackModel(nn.Module):
             hiddens = torch.cat(tuple(hiddens), 0)
 
             action_prob, action_logprob = self.actor(hiddens)
+            action = action.unsqueeze(1) # B -> B*1
             value = self.critic(hiddens, action)
 
             return action_prob, action_logprob, hidden_pres, value
@@ -62,7 +60,7 @@ class TrackModel(nn.Module):
 
 class Critic(nn.Module):
 
-    def __init__(self, state_dim, action_dim):
+    def __init__(self, state_dim=256, action_dim=1):
         """
         The network is to estimate the value of reward;
 
@@ -76,18 +74,18 @@ class Critic(nn.Module):
         self.state_dim = state_dim
         self.action_dim = action_dim
 
-        self.fcs1 = nn.Linear(state_dim,256)
+        self.fcs1 = nn.Linear(state_dim, 256)
         self.fcs1.weight.data = Fanin_init(self.fcs1.weight.data.size())
-        self.fcs2 = nn.Linear(256,128)
+        self.fcs2 = nn.Linear(256, 128)
         self.fcs2.weight.data = Fanin_init(self.fcs2.weight.data.size())
 
         self.fca1 = nn.Linear(action_dim,128)
         self.fca1.weight.data = Fanin_init(self.fca1.weight.data.size())
 
-        self.fc2 = nn.Linear(256,128)
+        self.fc2 = nn.Linear(256, 128)
         self.fc2.weight.data = Fanin_init(self.fc2.weight.data.size())
 
-        self.fc3 = nn.Linear(128,1)
+        self.fc3 = nn.Linear(256, 1)
         self.fc3.weight.data.uniform_(-EPS,EPS)
 
     def forward(self, state, action):
@@ -104,8 +102,6 @@ class Critic(nn.Module):
         s2 = F.relu(self.fcs2(s1))
         a1 = F.relu(self.fca1(action))
         x = torch.cat((s2,a1),dim=1)
-
-        x = F.relu(self.fc2(x))
         x = self.fc3(x)
         x = F.sigmoid(x)
 
@@ -114,27 +110,30 @@ class Critic(nn.Module):
 
 class Actor(nn.Module):
 
-    def __init__(self, state_dim, action_space):
+    def __init__(self, state_dim=256, action_space=2):
+
         """
-        :param state_dim: Dimension of input state (int)
-        :param action_dim: Dimension of output action (int)
+        Estimate the actions
+        Args:
+            - state_dim: Dimension of input state (int)
+            - action_dim: Dimension of output action (int)
         """
         super(Actor, self).__init__()
 
         self.state_dim = state_dim
         self.action_dim = action_space
 
-        self.fc1 = nn.Linear(state_dim,256)
+        self.fc1 = nn.Linear(state_dim, 256)
         self.fc1.weight.data = Fanin_init(self.fc1.weight.data.size())
 
-        self.fc2 = nn.Linear(256,128)
+        self.fc2 = nn.Linear(256, 128)
         self.fc2.weight.data = Fanin_init(self.fc2.weight.data.size())
 
-        self.fc3 = nn.Linear(128,64)
+        self.fc3 = nn.Linear(128, 64)
         self.fc3.weight.data = Fanin_init(self.fc3.weight.data.size())
 
-        self.fc4 = nn.Linear(64,action_space)
-        self.fc4.weight.data.uniform_(-EPS,EPS)
+        self.fc4 = nn.Linear(64, action_space)
+        self.fc4.weight.data.uniform_(-EPS, EPS)
         self.softmax = nn.Softmax(dim=1)
         self.logsoftmax = nn.LogSoftmax(dim=1)
 
@@ -153,14 +152,11 @@ class Actor(nn.Module):
         x = F.relu(self.fc1(state))
         x = F.relu(self.fc2(x))
         x = F.relu(self.fc3(x))
-
-        # action = F.tanh(self.fc4(x))
-        # action = action * self.action_lim
         x = self.fc4(x)
         action_prob = self.softmax(x)
         action_logprob = self.logsoftmax(x)
-
         return action_prob, action_logprob
 
 
-
+if __name__=='__main__':
+    pass
