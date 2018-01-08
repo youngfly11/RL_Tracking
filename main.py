@@ -1,34 +1,55 @@
 from __future__ import division
-import gym
 import numpy as np
 import torch
-from torch.autograd import Variable
 import os
-import psutil
-import gc
-import train
-from utils.misc import AverageMeter, save_checkpoint
-from utils import env
-from utils.dataloader import get_load, ReadSingleImage
+from train import train
+from test import test
+from utils.misc import save_checkpoint
 from utils.video import video_train, video_val
-
-from utils.misc import AverageMeter
 from utils.visualize import Dashboard
 import os.path as osp
+from model import tracking
+import argparse
 
-os.makedirs(osp.join('checkpoints','Tracking'))
-vis = Dashboard(port=8099,server='https://127.0.0.1', env='Tracking')
+parser = argparse.ArgumentParser(description='RL_Tracking')
+parser.add_argument('--lr', type=float, default=0.001,
+                    help='learning rate (default: 0.0001)')
+parser.add_argument('--gamma', type=float, default=0.99,
+                    help='discount factor for rewards (default: 0.99)')
+parser.add_argument('--max-grad-norm', type=float, default=5,
+                    help='value loss coefficient (default: 50)')
+parser.add_argument('--seed', type=int, default=1,
+                    help='random seed (default: 1)')
+parser.add_argument('--num-epochs', type=int, default=50,
+                    help='number of forward epochs in RL Tracking  (default: 50)')
 
+parser.add_argument('--tau', type=float, default=1.00,
+                    help='parameter for GAE (default: 1.00)')
+parser.add_argument('--entropy-coef', type=float, default=0.01,
+                    help='entropy term coefficient (default: 0.01)')
 
-EPOCHS = 50
-NUM_VIDEO= 60
-
-print ' NUMBER OF VIDEO :- ', NUM_VIDEO
+parser.add_argument('--value-loss-coef', type=float, default=0.5,
+                    help='value loss coefficient (default: 0.5)')
+parser.add_argument('--env-name', default='Tracking',
+                    help='environment to train on Visdom')
 
 
 def main():
 
-    trainer = train.Trainer(state_dim=256, action_space=2).cuda()
+    args = parser.parse_args()
+
+    if not osp.exists(osp.join('checkpoints', 'Tracking')):
+        os.makedirs(osp.join('checkpoints', 'Tracking'))
+    vis = Dashboard(port=8099, server='https://127.0.0.1', env='Tracking')
+
+    model = tracking.TrackModel(pretrained=True)
+    model = model.cuda()
+
+    optimizer = torch.optim.Adam([{'params':model.feature_extractor.parameters(),'lr': 0.1 * args.lr},
+                                  {'params':model.actor.parameters()},
+                                  {'params':model.critic.parameters()},
+                                  {'params':model.rnn.parameters()}],
+                                 lr = args.lr)
     best_loss = 100
     train_loss1 = {}
     train_loss2 = {}
@@ -39,9 +60,9 @@ def main():
     train_reward = {}
     val_reward = {}
 
-    for epoch in range(EPOCHS):
-        reward_train, loss_train, loss1_train, loss2_train = train_epoch(trainer=trainer, video_train=video_train)
-        reward_val, loss_val, loss1_val, loss2_val = val_epoch(trainer=trainer, video_val=video_val)
+    for epoch in range(args.num_epochs):
+        reward_train, loss_train, loss1_train, loss2_train = train(args=args, model=model, optimizer=optimizer, video_train=video_train)
+        reward_val, loss_val, loss1_val, loss2_val = test(args=args, model=model, video_val=video_val)
 
         train_loss[epoch] = loss_train
         train_loss1[epoch] = loss1_train
@@ -65,7 +86,7 @@ def main():
             is_best = True
             save_checkpoint({
                 'epoch': epoch + 1,
-                'state_dict': trainer.model.state_dict(),
+                'state_dict': model.state_dict(),
                 'best_loss1': best_loss,
                 'train_loss': train_loss,
                 'val_loss': val_loss,
@@ -76,121 +97,8 @@ def main():
                 dir=os.path.join('checkpoints', 'Tracking'), epoch=epoch)
 
 
-def train_epoch(trainer=None, video_train=None):
-
-    # TODO
-    # env.reset(), return fisrt observation and second frames
-    reward_avg = AverageMeter()
-    loss_avg = AverageMeter()
-    loss1_avg = AverageMeter()
-    loss2_avg = AverageMeter()
-    for video_name in video_train:
-
-        actions = []
-        rewards = []
-        observations = []
-        observation1, observation2 = env.reset(video_name)  # array
-        img1 = ReadSingleImage(img=observation1)
-        img1 = Variable(img1).cuda()
-        hidden_prev = trainer.model.init_hidden_state(batch_size=1)  # cuda tensor
-        first_action, hidden_prev = trainer.get_exploration_action(img=img1, hidden_prev=hidden_prev)
-        hidden_for_train = hidden_prev
-        observation = observation2
-        flag = 1
-        while flag:
-            observations.append(observation)
-            img = ReadSingleImage(img=observation)
-            img = Variable(img).cuda()
-            action = trainer.get_exploration_action(img=img, hidden_prev=hidden_prev)
-
-            actions.append(action) # just list
-            new_observation, reward, done = env.step(action)
-
-            actions.append(action)
-            rewards.append(reward)  # just list
-
-            observation = new_observation
-
-            if done:
-
-                flag = 0
-
-                actions = np.array(actions, dtype=np.float64)
-                rewards = np.array(rewards, dtype=np.float64)
-
-                # update the rewards
-                reward_avg.update(np.mean(np.array(rewards)))
-
-                rewards = trainer.reward_to_go(rewards=rewards)
-                train_loader = get_load(imgs=observations, actions=actions, rewards=rewards)
-                loss, loss1, loss2 = trainer.optimize(train_loader=train_loader, hidden_prev=hidden_for_train)
-                print(video_name, 'rewards:', np.mean(rewards), 'loss:', loss)
-
-                # update the loss
-                loss_avg.update(loss)
-                loss1_avg.update(loss1)
-                loss2_avg.update(loss2)
-
-    return reward_avg.avg, loss_avg.avg, loss1_avg.avg, loss2_avg.avg
-
-
-def val_epoch(trainer=None, video_val=None):
-
-    reward_avg = AverageMeter()
-    loss_avg = AverageMeter()
-    loss1_avg = AverageMeter()
-    loss2_avg = AverageMeter()
-
-    for video_name in video_val:
-
-        actions = []
-        rewards = []
-        observations = []
-        observation1, observation2 = env.reset(video_name)  # array
-        img1 = ReadSingleImage(img=observation1)
-        img1 = Variable(img1).cuda()
-        hidden_prev = trainer.model.init_hidden_state(batch_size=1)  # cuda tensor
-        first_action, hidden_prev = trainer.get_exploration_action(img=img1, hidden_prev=hidden_prev)
-        hidden_for_train = hidden_prev
-        observation = observation2
-        flag = 1
-        while flag:
-
-            observations.append(observation)
-            img = ReadSingleImage(img=observation)
-            img = Variable(img).cuda()
-            action = trainer.get_exploration_action(img=img, hidden_prev=hidden_prev)
-
-            actions.append(action) # just list
-            new_observation, reward, done = env.step(action)
-
-            actions.append(action)
-            rewards.append(reward)  # just list
-
-            observation = new_observation
-
-            if done:
-                flag = 0
-
-                actions = np.array(actions, dtype=np.float64)
-                rewards = np.array(rewards, dtype=np.float64)
-
-                # update the rewards
-                reward_avg.update(np.mean(rewards))
-
-                rewards = trainer.reward_to_go(rewards=rewards)
-                train_loader = get_load(imgs=observations, actions=actions, rewards=rewards)
-                loss, loss1, loss2 = trainer.optimize(train_loader=train_loader,
-                                                      hidden_prev=hidden_for_train,
-                                                      is_train=False)
-                print(video_name, 'rewards:', np.mean(rewards), 'loss:', loss)
-
-                # update the loss
-                loss_avg.update(loss)
-                loss1_avg.update(loss1)
-                loss2_avg.update(loss2)
-
-    return reward_avg.avg, loss_avg.avg, loss1_avg.avg, loss2_avg.avg
-
 if __name__ == '__main__':
+
+    np.random.seed(10)
+    torch.manual_seed(10)
     main()
