@@ -4,7 +4,7 @@ import torch.nn.functional as F
 import numpy as np
 import resnet
 from torch.autograd import Variable
-
+from torch.distributions import Bernoulli
 EPS = 0.003
 
 
@@ -22,36 +22,38 @@ class TrackModel(nn.Module):
         self.actor = Actor(state_dim=256, action_space=2).cuda()
         self.critic = Critic(state_dim=256, action_dim=1).cuda()
         self.rnn = nn.LSTM(input_size=256, hidden_size=256, num_layers=1).cuda()
+        self.hidden_size = 256
 
-    def forward(self, imgs, action=None, hidden_prev=None, is_play=True):
+    def forward(self, imgs, hidden_prev=None):
+
+        """
+        Main model for tracking
+        Args:
+        ----
+        - imgs: input single image 1*3*224*224
+        - hidden_prev: (h0, c0)  1*1*256
+        - action_np: numpy format action, just number
+        - action: 1*1 cuda tensor format
+        - action_sample: 1 cuda tesor format
+        - value 1 cuda tensor format, output from the critic network.
+        - hidden_pres: after change, Variable(h.data)
+        """
 
         # hidden_prev: tuple, (h0,c0)
+        state = self.feature_extractor(imgs) # 1*256
+        state = state[None, :, :]  # change the hidden state [batch, state_dim] -> [1, batch, state_dim]
+        _, hidden_pres = self.rnn(state, hidden_prev)
+        h0 = hidden_pres[0].squeeze(0) # 1*256
+        action_prob, action_logprob = self.actor(h0)
+        action_detach = action_prob.detach()
+        m = Bernoulli(action_detach[0, 1])
+        action_sample = m.sample()  #[1]
+        action = action_sample.unsqueeze(1) #[1, 1]
+        value = self.critic(h0, action)
 
-        batch_size = imgs.size[0]
-        if self.is_play:
-            state = self.feature_extractor(imgs)
-            state = state[None, :, :]  # change the hidden state [batch, state_dim] -> [1, batch, state_dim]
-            hidden_pres = self.rnn(state, hidden_prev)
-            h0 = hidden_pres[0].squeeze(0)
-            action_prob, _ = self.actor(h0)
-            return action_prob, hidden_pres
-        else:
-            hiddens = []
-            for i in range(batch_size):
-                img = imgs[i,:,:,:].unsqueeze(0)
-                state = self.feature_extractor(img) # 1*256
-                state = state[None, :, :]  # change the hidden state [batch, state_dim] -> [1, batch, state_dim]
-                hidden_pres = self.rnn(state, hidden_prev)
-                h0 = hidden_pres[0].squeeze(0) # 1*256
-                hidden_prev = hidden_pres
-                hiddens.append(h0)
-            hiddens = torch.cat(tuple(hiddens), 0)
-
-            action_prob, action_logprob = self.actor(hiddens)
-            action = action.unsqueeze(1) # B -> B*1
-            value = self.critic(hiddens, action)
-
-            return action_prob, action_logprob, hidden_pres, value
+        hidden_pres = (Variable(hidden_pres[0].data), Variable(hidden_pres[1].data))
+        action_np = action_detach.data.cpu().numpy()[0]
+        return action_prob, action_logprob, action_np, value, hidden_pres
 
     def init_hidden_state(self, batch_size):
         return(Variable(torch.zeros(1, batch_size, self.hidden_size)).cuda(),
@@ -101,9 +103,10 @@ class Critic(nn.Module):
         s1 = F.relu(self.fcs1(state))
         s2 = F.relu(self.fcs2(s1))
         a1 = F.relu(self.fca1(action))
-        x = torch.cat((s2,a1),dim=1)
+        # import pdb
+        # pdb.set_trace()
+        x = torch.cat((s2,a1), dim=1)
         x = self.fc3(x)
-        x = F.sigmoid(x)
 
         return x
 
