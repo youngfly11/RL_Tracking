@@ -1,6 +1,5 @@
 # Env v1.3.4
 
-
 ### use hist_v1.3
 * resize bg_box area 
 * add gaussian filter and medium filter to improve response map and color map)
@@ -13,3 +12,7 @@
 
 ### fix bugs
 * fix bugs in show_tracking_result
+
+### experiments recording
+- [ ] when rewards below 0.2, rewards**2
+- [ ] 
