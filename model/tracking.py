@@ -56,7 +56,7 @@ class TrackModel(nn.Module):
         # import  pdb; pdb.set_trace()
 
         prob, logprob = self.actor(h0)
-        action_detach = prob
+        action_detach = prob.detach()
         m = Bernoulli(action_detach[0, 1])
         sample = m.sample()  #[1]
 
@@ -169,8 +169,8 @@ class Actor(nn.Module):
         x = F.elu(self.fc3(x))
         x = self.fc4(x)
         prob = self.softmax(x)
-        logprob = self.logsoftmax(x)
-        return prob, logprob
+        log_prob = self.logsoftmax(x)
+        return prob, log_prob
 
 
 if __name__=='__main__':

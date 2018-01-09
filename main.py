@@ -15,9 +15,9 @@ import argparse
 parser = argparse.ArgumentParser(description='RL_Tracking')
 parser.add_argument('--lr', type=float, default=0.01,
                     help='learning rate (default: 0.001)')
-parser.add_argument('--gamma', type=float, default=0.7,
+parser.add_argument('--gamma', type=float, default=0.99,
                     help='discount factor for rewards (default: 0.99)')
-parser.add_argument('--max-grad-norm', type=float, default=50,
+parser.add_argument('--max-grad-norm', type=float, default=20,
                     help='value loss coefficient (default: 50)')
 parser.add_argument('--seed', type=int, default=1,
                     help='random seed (default: 1)')
@@ -26,7 +26,7 @@ parser.add_argument('--num-epochs', type=int, default=50,
 
 parser.add_argument('--tau', type=float, default=1.00,
                     help='parameter for GAE (default: 1.00)')
-parser.add_argument('--entropy-coef', type=float, default=0.1,
+parser.add_argument('--entropy-coef', type=float, default=0.001,
                     help='entropy term coefficient (default: 0.01)')
 
 parser.add_argument('--value-loss-coef', type=float, default=0.5,
@@ -48,13 +48,14 @@ def main():
         os.makedirs(osp.join('checkpoints', 'Tracking'))
     vis = Dashboard(server='http://localhost', port=8097, env='Tracking')
 
-    model = tracking.TrackModel(pretrained=True)
+    model = tracking_v1.TrackModel(pretrained=True)
     model = model.cuda()
     # grad = viz.create_viz('main', model, env = 'Tracking')
     # grad.regis_weight_ratio_plot('critic.fc2', 'weight', 'g/w')
 
     # feature_extractor network, the same learning rate
-    optimizer = torch.optim.Adam([{'params': model.fc.parameters()},
+    # optimizer = torch.optim.Adam([{'params': model.fc.parameters()},
+    optimizer = torch.optim.Adam([{'params': model.feature_extractor.parameters()},
                                   {'params':model.actor.parameters()},
                                   {'params':model.critic.parameters()},
                                   {'params':model.rnn.parameters()}],

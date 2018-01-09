@@ -102,8 +102,8 @@ def ReadSingleImage(img):
     - img: return, torch.FloatTensor
     """
 
-    # new_size = (128, 128, 3)
-    new_size = (224,224, 3)
+    new_size = (128, 128, 3)
+    # new_size = (224,224, 3)
 
     mean_bgr = np.array([0.485, 0.456, 0.406], dtype=np.float32)
     stand_bgr = np.array([0.229, 0.224, 0.225], dtype=np.float32)

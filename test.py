@@ -2,7 +2,7 @@ import torch
 import torch.optim as optim
 from torch.autograd import Variable
 from utils.misc import AverageMeter
-from env import Env
+from Unsupervised_algorithm.env import Env
 from utils.dataloader import ReadSingleImage
 import numpy as np
 
@@ -13,11 +13,13 @@ def test(args, model, video_val=None):
     value_loss_avg = AverageMeter()
     policy_loss_avg = AverageMeter()
 
-    root_dir = 'dataset/VOT'
+    root_dir = '/home/youngfly/DL_project/RL_Tracking/dataset/VOT'
     data_type = 'VOT'
 
-    model.train()
-    env = Env(seqs_path=root_dir, data_set_type=data_type, save_path='dataset/Result/VOT')
+    model.eval()
+    env = Env(seqs_path=root_dir,
+              data_set_type=data_type,
+              save_path='/home/youngfly/DL_project/RL_Tracking/dataset/Result/VOT')
 
     for video_name in video_val:
 

@@ -131,7 +131,7 @@ class Critic(nn.Module):
         """
         s1 = F.elu(self.fcs1(state))
         s2 = F.elu(self.fcs2(s1))
-        a1 = F.relu(self.fca1(action))
+        a1 = F.elu(self.fca1(action))
         x = torch.cat((s2,a1), dim=1)
         x = self.fc3(x)
 

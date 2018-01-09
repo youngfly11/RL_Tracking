@@ -1,7 +1,7 @@
 import torch
 from torch.autograd import Variable
 from utils.misc import AverageMeter
-from env import Env
+from Unsupervised_algorithm.env import Env
 from utils.dataloader import ReadSingleImage
 import numpy as np
 # import utils.vis_gradient as viz
@@ -14,11 +14,13 @@ def train(args, model, optimizer=None, video_train=None):
     value_loss_avg = AverageMeter()
     policy_loss_avg = AverageMeter()
 
-    root_dir = 'dataset/VOT'
+    root_dir = '/home/youngfly/DL_project/RL_Tracking/dataset/VOT'
     data_type = 'VOT'
 
     model.train()
-    env = Env(seqs_path=root_dir, data_set_type=data_type, save_path='dataset/Result/VOT')
+    env = Env(seqs_path=root_dir,
+              data_set_type=data_type,
+              save_path='/home/youngfly/DL_project/RL_Tracking/dataset/Result/VOT')
 
     for video_name in video_train:
 
@@ -109,7 +111,7 @@ def train(args, model, optimizer=None, video_train=None):
         optimizer.zero_grad()
         loss = args.value_loss_coef * value_loss + policy_loss
 
-        loss += 0.001*loss_dd[0]
+        loss += 0.005*loss_dd[0]
 
         # print model.actor.fc1.weight
         loss.backward()
