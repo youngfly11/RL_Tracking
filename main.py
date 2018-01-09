@@ -40,9 +40,11 @@ def hook_print(grad):
     print(grad)
 
 
+
 def main():
 
     args = parser.parse_args()
+    torch.manual_seed(args.seed)
 
     if not osp.exists(osp.join('checkpoints', 'Tracking')):
         os.makedirs(osp.join('checkpoints', 'Tracking'))
