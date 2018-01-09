@@ -83,11 +83,20 @@ class Env:
         self.seq_loader.get_sequence(name)
         self.seq_name = name
 
+        self.save_response = os.path.join(self.save_path,self.seq_name, 'response')
+        self.save_img = os.path.join(self.save_path, self.seq_name, 'imgs')
+        self.save_hist = os.path.join(self.save_path, self.seq_name, 'color_map')
+
+        if not os.path.exists(self.save_response):
+            os.makedirs(self.save_response)
+            os.makedirs(self.save_img)
+            os.makedirs(self.save_hist)
+
         ret, img0 = self.seq_loader.get_cap().read()
         ret, img1 = self.seq_loader.get_cap().read()
 
         self.hist_tracker = HistTracker()
-        self.kcf_tracker = KCFTracker(hog=False)
+        self.kcf_tracker = KCFTracker(hog=True)
 
         self.hist_tracker.init(self.gt_rects[0], img0)
         self.kcf_tracker.init(self.gt_rects[0], img0)
@@ -118,9 +127,10 @@ class Env:
         predict_img = self.hist_tracker.get_predict_img(self.gt_rects[self.frame_idx - 1])
         cv2.putText(predict_img, 'S: %s' % self.action, (8, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
 
+
         cv2.imshow(self.seq_name, predict_img)
         if self.save_path:
-            cv2.imwrite('%s/%d_predict.jpg'%(self.save_path, self.frame_idx -1), predict_img)
+            cv2.imwrite('%s/%d_predict.jpg'%(self.save_img, self.frame_idx -1), predict_img)
 
     def show_hist(self):
         color_map, response_map = self.hist_tracker.get_hist_map()
@@ -128,8 +138,8 @@ class Env:
         cv2.imshow('%s response map' % self.seq_name, response_map)
 
         if self.save_path:
-            cv2.imwrite('%s/%d_color_map.jpg'%(self.save_path, self.frame_idx -1), color_map)
-            cv2.imwrite('%s/%d_response.jpg'%(self.save_path, self.frame_idx -1), response_map)
+            cv2.imwrite('%s/%d_color_map.jpg'%(self.save_hist, self.frame_idx -1), color_map)
+            cv2.imwrite('%s/%d_response.jpg'%(self.save_response, self.frame_idx -1), response_map)
 
     def show_all(self):
         self.show_tracking_result()

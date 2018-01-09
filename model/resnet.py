@@ -3,11 +3,11 @@ import math
 import torch.utils.model_zoo as model_zoo
 from torch.autograd import Variable
 import torch
+import torch.nn.functional as F
 
 
 __all__ = ['ResNet', 'resnet18', 'resnet34', 'resnet50', 'resnet101',
            'resnet152']
-
 
 model_urls = {
     'resnet18': 'https://download.pytorch.org/models/resnet18-5c106cde.pth',
@@ -138,6 +138,9 @@ class ResNet(nn.Module):
         return nn.Sequential(*layers)
 
     def forward(self, x):
+
+        # elu for output
+        # import pdb; pdb.set_trace()
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
@@ -150,8 +153,8 @@ class ResNet(nn.Module):
 
         x = self.avgpool(x)
         x = x.view(x.size(0), -1)
-        x = self.fc1(x)
-
+        # x = self.fc1(x)
+        # x = F.elu(x)
         return x
 
 
@@ -222,7 +225,6 @@ def resnet152(pretrained=False, **kwargs):
 if __name__=='__main__':
 
 
-    x = Variable(torch.ones(32,3,224,224))
     model=resnet18(pretrained=False)
-    y = model(x)
-    print y.size()
+    print(model)
+

@@ -4,17 +4,22 @@
 # @Email   : piaozhx@shanghaitech.edu.cn
 
 from env import Env
+import random
 
 
 def main():
-
-    # TODO
-    # change path
-    env = Env('/Users/piaozhx/tracking dataset/VOT16/', 'VOT')
+    env = Env('/Users/piaozhx/tracking dataset/VOT16/', 'VOT', 'data')
     env.reset('bag')
 
-    while True:
-        reward, next_frame, done = env.step(0)
+    f_num = len(env.gt_rects)
+
+    action_list = []
+    for i in xrange(f_num):
+        action_list.append(random.randint(0,1))
+
+    for i in action_list:
+        reward, next_frame, done = env.step(i)
+        env.show_all()
         print reward
         if done:
             break

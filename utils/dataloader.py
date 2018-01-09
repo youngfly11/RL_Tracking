@@ -42,16 +42,17 @@ class ReadImage(Dataset):
 
         action = self.actions[idx]
         reward = self.rewards[idx]
-
+        # print('raw_iamge', imgs.shape)
         # resize the image
-        img = imgs.resize(self.new_size)
+        img = np.resize(imgs, self.new_size)
+        # print('img_size', img.shape)
         img = np.array(img, dtype=np.float64)
 
         img_np = img[:, :, ::-1]
         img_np = img_np/255.0 - self.mean_bgr
         img_np /= self.stand_bgr
 
-        sample = {'images':imgs, 'actions': action, 'rewards': reward}
+        sample = {'images':img_np, 'actions': action, 'rewards': reward}
 
         # transform the format
         if self.transform:
@@ -65,6 +66,7 @@ class Numpy2Tensor(object):
     def __call__(self, sample):
 
         image, action, reward = sample['images'], sample['actions'], sample['rewards']
+        # print('before_transpose:', image.shape)
         image = image.transpose(2, 0, 1)
         action = np.array([action])
         reward = np.array([reward])
@@ -72,8 +74,9 @@ class Numpy2Tensor(object):
         image = torch.from_numpy(image).float()
         action = torch.from_numpy(action).float()
         reward = torch.from_numpy(reward).float()
+        # print ('images_size', image.size())
 
-        return {'imgs':image, 'actions': action, 'rewards': reward}
+        return {'images':image, 'actions': action, 'rewards': reward}
 
 
 def get_load(imgs, actions, rewards, batch_size=32):
@@ -99,10 +102,13 @@ def ReadSingleImage(img):
     - img: return, torch.FloatTensor
     """
 
-    new_size = (224, 224, 3)
+    # new_size = (128, 128, 3)
+    new_size = (224,224, 3)
+
     mean_bgr = np.array([0.485, 0.456, 0.406], dtype=np.float32)
     stand_bgr = np.array([0.229, 0.224, 0.225], dtype=np.float32)
-    img = img.resize(new_size)
+    img = np.resize(img, new_size)
+    # img = img.resize(new_size)
     img = img[:, :, ::-1]
     img = img/255.0 - mean_bgr
     img /= stand_bgr
@@ -116,7 +122,7 @@ if __name__ == '__main__':
 
     import logging
 
-    for idx, sample in enumerate(train_loader):
-        image, label = sample['image'], sample['label']
-        image_name = sample['image_name']
-        print image_name, label
+    # for idx, sample in enumerate(train_loader):
+    #     image, label = sample['image'], sample['label']
+    #     image_name = sample['image_name']
+    #     print image_name, label

@@ -1,2 +1,2 @@
-video_train = [ ]
-video_val = [ ]
+video_train = ['basketball']
+video_val = ['ball1']

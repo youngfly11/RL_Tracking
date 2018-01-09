@@ -2,6 +2,8 @@
   <dictionary name="youngfly">
     <words>
       <w>entropies</w>
+      <w>optim</w>
+      <w>pretrained</w>
     </words>
   </dictionary>
 </component>

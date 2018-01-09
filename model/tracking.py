@@ -19,10 +19,13 @@ class TrackModel(nn.Module):
     def __init__(self, pretrained=True):
         super(TrackModel, self).__init__()
         self.feature_extractor = resnet.resnet18(pretrained=pretrained).cuda()
+        for param in self.feature_extractor.parameters():
+            param.requires_grad = False
         self.actor = Actor(state_dim=256, action_space=2).cuda()
         self.critic = Critic(state_dim=256, action_dim=1).cuda()
         self.rnn = nn.LSTM(input_size=256, hidden_size=256, num_layers=1).cuda()
         self.hidden_size = 256
+        self.fc = nn.Linear(512, 256)
 
     def forward(self, imgs, hidden_prev=None):
 
@@ -40,20 +43,31 @@ class TrackModel(nn.Module):
         """
 
         # hidden_prev: tuple, (h0,c0)
+        # import  pdb; pdb.set_trace()
         state = self.feature_extractor(imgs) # 1*256
+        state = self.fc(state)
+        state = F.elu(state)
         state = state[None, :, :]  # change the hidden state [batch, state_dim] -> [1, batch, state_dim]
+        # import  pdb; pdb.set_trace()
         _, hidden_pres = self.rnn(state, hidden_prev)
         h0 = hidden_pres[0].squeeze(0) # 1*256
-        action_prob, action_logprob = self.actor(h0)
-        action_detach = action_prob.detach()
+
+        # for actor network
+        # import  pdb; pdb.set_trace()
+
+        prob, logprob = self.actor(h0)
+        action_detach = prob
         m = Bernoulli(action_detach[0, 1])
-        action_sample = m.sample()  #[1]
-        action = action_sample.unsqueeze(1) #[1, 1]
+        sample = m.sample()  #[1]
+
+        # for critic network
+        action = sample.unsqueeze(1) # [1, 1]
+        # import  pdb; pdb.set_trace()
+
         value = self.critic(h0, action)
 
         hidden_pres = (Variable(hidden_pres[0].data), Variable(hidden_pres[1].data))
-        action_np = action_detach.data.cpu().numpy()[0]
-        return action_prob, action_logprob, action_np, value, hidden_pres
+        return prob, logprob, sample, value, hidden_pres
 
     def init_hidden_state(self, batch_size):
         return(Variable(torch.zeros(1, batch_size, self.hidden_size)).cuda(),
@@ -100,11 +114,9 @@ class Critic(nn.Module):
         - action: Input Action (Torch Variable : [n,action_dim]
         - Value:  Value function : Q(S,a) (Torch Variable : [n,1] ). The true rewards will lying in [0, 1]
         """
-        s1 = F.relu(self.fcs1(state))
-        s2 = F.relu(self.fcs2(s1))
-        a1 = F.relu(self.fca1(action))
-        # import pdb
-        # pdb.set_trace()
+        s1 = F.elu(self.fcs1(state))
+        s2 = F.elu(self.fcs2(s1))
+        a1 = F.elu(self.fca1(action))
         x = torch.cat((s2,a1), dim=1)
         x = self.fc3(x)
 
@@ -150,16 +162,21 @@ class Actor(nn.Module):
         Args:
         ----
         -state: input state (torch Variable: [n, state_dim])
-        -action_prob, action_logporb: output probability and logsoftmax; [n,action_dim]
+        -prob, logprob: output probability and logsoftmax; [n, action_dim]
         """
-        x = F.relu(self.fc1(state))
-        x = F.relu(self.fc2(x))
-        x = F.relu(self.fc3(x))
+        x = F.elu(self.fc1(state))
+        x = F.elu(self.fc2(x))
+        x = F.elu(self.fc3(x))
         x = self.fc4(x)
-        action_prob = self.softmax(x)
-        action_logprob = self.logsoftmax(x)
-        return action_prob, action_logprob
+        prob = self.softmax(x)
+        logprob = self.logsoftmax(x)
+        return prob, logprob
 
 
 if __name__=='__main__':
-    pass
+    critic = Critic()
+    state = Variable(torch.ones(1, 256))
+    action = Variable(torch.ones(1).unsqueeze(0))
+
+    value = critic(state, action)
+    print value.size()
