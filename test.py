@@ -63,9 +63,9 @@ def test(args, model, video_val=None):
             env.show_all()
             # env.show_tracking_result()
 
-            print('test:', action_np[0], 'rewards:', reward, 'probability:', action_prob.data.cpu().numpy()[0, 0],
-                  action_prob.data.cpu().numpy()[0, 1])
-
+            print('test:','frame:%d'%(i), 'Action:%d'%action_np[0], 'rewards:%.6f'%reward, 'probability:%.6f%.6f'%(action_prob.data.cpu().numpy()[0, 0],
+                  action_prob.data.cpu().numpy()[0, 1]))
+            i = i+1
             rewards.append(reward)  # just list
             values.append(value)  # list, Variable cuda inner
             observation = new_observation
@@ -104,9 +104,9 @@ def test(args, model, video_val=None):
 
         loss = args.value_loss_coef * value_loss + policy_loss
 
-        print(video_name,'frame{%d}'%(i), 'rewards:{%.6f}' % np.mean(rewards), 'loss:{%.6f}' % loss.data[0], 'value_loss:{%6f}' %
-              value_loss.data[0], 'policy_loss{%.6f}' % policy_loss.data[0])
-        i += 1
+        print(video_name, 'rewards:%.6f'%np.mean(rewards), 'loss:%.6f'%loss.data[0], 'value_loss:%6f' %
+              value_loss.data[0], 'policy_loss:%.6f' % policy_loss.data[0])
+
         # update the loss
         loss_avg.update(loss.data.cpu().numpy())
         value_loss_avg.update(value_loss.data.cpu().numpy())

@@ -67,7 +67,7 @@ def train(args, model, optimizer=None, video_train=None):
             reward, new_observation, done = env.step(action=action_np)
             env.show_all()
 
-            print('train:','frame{%d}'%(i),'Action:{%1d}'%action_np[0], 'rewards:{%.6f}'%reward, 'probability:{%.6f}, {%.6f}'%(action_prob.data.cpu().numpy()[0, 0],
+            print('train:','frame:%d'%(i),'Action:%1d'%action_np[0], 'rewards:%.6f'%reward, 'probability:%.6f, %.6f'%(action_prob.data.cpu().numpy()[0, 0],
                   action_prob.data.cpu().numpy()[0, 1]))
             i += 1
             rewards.append(reward) # just list
@@ -109,7 +109,7 @@ def train(args, model, optimizer=None, video_train=None):
         optimizer.zero_grad()
         loss = args.value_loss_coef * value_loss + policy_loss
 
-        loss += 0.01*loss_dd[0]
+        loss += 0.001*loss_dd[0]
 
         # print model.actor.fc1.weight
         loss.backward()
@@ -120,8 +120,8 @@ def train(args, model, optimizer=None, video_train=None):
         torch.nn.utils.clip_grad_norm(model.actor.parameters(), args.max_grad_norm)
         optimizer.step()
 
-        print(video_name, 'rewards:{%.6f}'%np.mean(rewards), 'loss:{%.6f}'%loss.data[0],'value_loss:{%6f}'%
-              value_loss.data[0], 'policy_loss:{%.6f}'%policy_loss.data[0])
+        print(video_name, 'rewards:%.6f'%np.mean(rewards), 'loss:%.6f'%loss.data[0],'value_loss:%6f'%
+              value_loss.data[0], 'policy_loss:%.6f'%policy_loss.data[0])
 
         # update the loss
         loss_avg.update(loss.data.cpu().numpy())
