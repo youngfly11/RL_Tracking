@@ -2,5 +2,7 @@
 *.png
 *.jpg
 *.tar
-pytorch-a3c/*
-
+action/*
+checkpoints/*
+dataset/*
+*.npz

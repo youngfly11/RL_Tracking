@@ -65,20 +65,10 @@ class AverageMeter(object):
 
 def adjust_learning_rate(optimizer, lr, epoch):
     """Sets the learning rate to the initial LR decayed by 10 every 30 epochs"""
-    if epoch<=50:
-        lr = 0.01
-        for param_group in optimizer.param_groups:
-            param_group['lr'] = lr
-    if epoch > 50 and epoch < 100:
-    # if epoch > 50 and epoch < 100:
-    # if epoch > 50 and epoch < 100:
-        lr = 0.005
-        for param_group in optimizer.param_groups:
-            param_group['lr'] = lr
-    elif epoch > 100:
-        lr = 0.001
-        for param_group in optimizer.param_groups:
-            param_group['lr'] = lr
+
+    lr = lr*0.95**(epoch)
+    for param_group in optimizer.param_groups:
+        param_group['lr'] = lr
 
 class AverageAccuracy(object):
 

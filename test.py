@@ -1,5 +1,4 @@
 import torch
-import torch.optim as optim
 from torch.autograd import Variable
 from utils.misc import AverageMeter
 from Unsupervised_algorithm.env import Env
@@ -19,11 +18,10 @@ def test(args, model, video_val=None):
     model.eval()
     env = Env(seqs_path=root_dir,
               data_set_type=data_type,
-              save_path='/home/youngfly/DL_project/RL_Tracking/dataset/Result/VOT')
+              save_path='/dataset/Result/VOT')
 
     for video_name in video_val:
 
-        # env = Env(seqs_path=root_dir, data_set_type=data_type, save_path='dataset/Result/VOT')
         actions = []
         rewards = []
         values = []
@@ -65,9 +63,9 @@ def test(args, model, video_val=None):
             env.show_all()
             # env.show_tracking_result()
 
-            print('test:','frame:%d'%(i), 'Action:%d'%action_np[0], 'rewards:%.6f'%reward, 'probability:%.6f%.6f'%(action_prob.data.cpu().numpy()[0, 0],
+            print('test:', 'frame:%d' % (i), 'Action:%d' % action_np[0], 'rewards:%.6f' % reward, 'probability:%.6f, %.6f' % (action_prob.data.cpu().numpy()[0, 0],
                   action_prob.data.cpu().numpy()[0, 1]))
-            i = i+1
+            i = i + 1
             rewards.append(reward)  # just list
             values.append(value)  # list, Variable cuda inner
             observation = new_observation
@@ -82,6 +80,8 @@ def test(args, model, video_val=None):
         gae = torch.FloatTensor([0]).cuda()
         values.append(running_add)
         for i in reversed(range(len(rewards))):
+            # if rewards[i] < 0.2:
+            #     rewards[i] = rewards[i] ** 2
             running_add = args.gamma * running_add + rewards[i]
             advantage = running_add - values[i]
             value_loss = value_loss + 0.5 * advantage.pow(2)
@@ -106,7 +106,7 @@ def test(args, model, video_val=None):
 
         loss = args.value_loss_coef * value_loss + policy_loss
 
-        print(video_name, 'rewards:%.6f'%np.mean(rewards), 'loss:%.6f'%loss.data[0], 'value_loss:%6f' %
+        print(video_name, 'rewards:%.6f' % np.mean(rewards), 'loss:%.6f' % loss.data[0], 'value_loss:%6f' %
               value_loss.data[0], 'policy_loss:%.6f' % policy_loss.data[0])
 
         # update the loss

@@ -42,7 +42,6 @@ class TrackModel(nn.Module):
         - hidden_pres: after change, Variable(h.data)
         """
 
-        # hidden_prev: tuple, (h0,c0)
         # import  pdb; pdb.set_trace()
         state = self.feature_extractor(imgs) # 1*256
         state = self.fc(state)
@@ -58,10 +57,10 @@ class TrackModel(nn.Module):
         prob, logprob = self.actor(h0)
         action_detach = prob.detach()
         m = Bernoulli(action_detach[0, 1])
-        sample = m.sample()  #[1]
+        sample = m.sample()  # [1]
 
         # for critic network
-        action = sample.unsqueeze(1) # [1, 1]
+        action = sample.unsqueeze(1)  # [1, 1]
         # import  pdb; pdb.set_trace()
 
         value = self.critic(h0, action)
@@ -102,7 +101,7 @@ class Critic(nn.Module):
         self.fc2.weight.data = Fanin_init(self.fc2.weight.data.size())
 
         self.fc3 = nn.Linear(256, 1)
-        self.fc3.weight.data.uniform_(-EPS,EPS)
+        self.fc3.weight.data.uniform_(-EPS, EPS)
 
     def forward(self, state, action):
         """
@@ -112,12 +111,13 @@ class Critic(nn.Module):
         ----
         - state:  Input state (Torch Variable : [n,state_dim] )
         - action: Input Action (Torch Variable : [n,action_dim]
-        - Value:  Value function : Q(S,a) (Torch Variable : [n,1] ). The true rewards will lying in [0, 1]
+        - Value:  Value function : Q(S,a) (Torch Variable : [n,1] ).
+                  The true rewards will lying in [0, 1]
         """
         s1 = F.elu(self.fcs1(state))
         s2 = F.elu(self.fcs2(s1))
         a1 = F.elu(self.fca1(action))
-        x = torch.cat((s2,a1), dim=1)
+        x = torch.cat((s2, a1), dim=1)
         x = self.fc3(x)
 
         return x
@@ -173,10 +173,9 @@ class Actor(nn.Module):
         return prob, log_prob
 
 
-if __name__=='__main__':
+if __name__ == '__main__':
     critic = Critic()
     state = Variable(torch.ones(1, 256))
     action = Variable(torch.ones(1).unsqueeze(0))
-
     value = critic(state, action)
     print value.size()

@@ -16,7 +16,7 @@ import os
 
 def normalize_255(a):
     max_val, min_val = a.max(), a.min()
-    a = (a - min_val) / (max_val - min_val) * 255
+    a = (a - min_val) / float(max_val - min_val) * 255
     a = a.astype(np.uint8)
 
     return a
@@ -234,7 +234,7 @@ class HistTracker:
 
     def get_hist_map(self):
         rgb_response_map = cv2.cvtColor(normalize_255(self.response_map), cv2.COLOR_GRAY2RGB)
-        rgb_color_map = cv2.cvtColor(normalize_255(self.color_map), cv2.COLOR_GRAY2RGB)
+        rgb_color_map = cv2.cvtColor(self.color_map, cv2.COLOR_GRAY2RGB)
 
         bg_pred_x, bg_pred_y = self.pred_cpos[0] - self.old_bg_box[0] - self.ext_len[2], self.pred_cpos[1] - self.old_bg_box[1] - self.ext_len[0]
 
