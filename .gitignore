@@ -2,7 +2,7 @@
 *.png
 *.jpg
 *.tar
-action/*
+action
 checkpoints/*
-dataset/*
+dataset
 *.npz
